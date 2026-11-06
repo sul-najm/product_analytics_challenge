@@ -1,0 +1,105 @@
+# Raw Globepay extracts read in place from data/raw/ by dbt-duckdb (external_location).
+# Paths are relative to dbt/, where dbt is run from.
+# Source tests check the raw data before any model is built
+
+sources:
+  - name: globepay_raw
+    description: Raw CSV extracts from Globepay (Jan-Jun 2019)
+    # Production only: enable once a daily loader adds a load timestamp (_loaded_at) to each row.
+    # The CSVs have none, so it is left off here.
+    # config:
+    #   loaded_at_field: _loaded_at
+    #   freshness:
+    #     warn_after: {count: 24, period: hour}
+    #     error_after: {count: 48, period: hour}
+    tables:
+      - name: acceptance_report
+        description: One row per payment attempt. ';'-separated.
+        meta:
+          external_location: "read_csv('../data/raw/acceptance_report.csv', delim = ';', header = true)"
+        columns:
+          - name: external_ref
+            description: Payment identifier; join key to the chargeback report.
+            data_tests:
+              - not_null
+              - unique
+              # Every payment must have a chargeback record
+              - relationships:
+                  arguments:
+                    to: source('globepay_raw', 'chargeback_report')
+                    field: external_ref
+          - name: state
+            description: Payment outcome. The API spec writes it as "Accepted or Declined"; the data has upper case.
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ['ACCEPTED', 'DECLINED']
+          - name: currency
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ['USD', 'EUR', 'GBP', 'CAD', 'MXN']
+          - name: country
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ['US', 'AE', 'FR', 'UK', 'CA', 'MX']
+          - name: date_time
+            data_tests:
+              - not_null
+          - name: amount
+            data_tests:
+              - not_null
+          - name: rates
+            data_tests:
+              - not_null
+          - name: status
+            description: Always TRUE in this extract; dropped in staging (assumption A9). Warns if a new value appears.
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: [true]
+                    quote: false
+                  config:
+                    severity: warn
+          - name: source
+            description: Always GLOBALPAY in this extract; dropped in staging (assumption A9). A new value would mean a new processor.
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ['GLOBALPAY']
+                  config:
+                    severity: warn
+
+      - name: chargeback_report
+        description: One row per payment with its chargeback flag. ','-separated.
+        meta:
+          external_location: "read_csv('../data/raw/chargeback_report.csv', header = true)"
+        columns:
+          - name: external_ref
+            data_tests:
+              - not_null
+              - unique
+          - name: chargeback
+            data_tests:
+              - not_null
+          - name: status
+            description: Always TRUE in this extract; dropped in staging (assumption A9). Warns if a new value appears.
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: [true]
+                    quote: false
+                  config:
+                    severity: warn
+          - name: source
+            description: Always GLOBALPAY in this extract; dropped in staging (assumption A9). A new value would mean a new processor.
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ['GLOBALPAY']
+                  config:
+                    severity: warn

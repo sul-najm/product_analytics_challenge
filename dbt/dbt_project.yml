@@ -1,0 +1,10 @@
+name: globepay
+version: "1.0.0"
+profile: globepay
+model-paths: ["models"]
+test-paths: ["tests"]
+models:
+  globepay:
+    staging:      {+materialized: view}
+    intermediate: {+materialized: view}
+    marts:        {+materialized: table}

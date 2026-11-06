@@ -1,0 +1,49 @@
+models:
+  - name: payment_attempts
+    description: One row per payment attempt. The BI drill-down table.
+    # Contract: dbt checks every column's name and type against this file and fails the build
+    # on any mismatch, so BI never receives an unexpected type.
+    config:
+      contract: {enforced: true}
+    columns:
+      - {name: payment_id, data_type: varchar, description: "Primary key (external_ref).", data_tests: [not_null, unique]}
+      - {name: provider_ref, data_type: varchar, description: "Globepay reference (ref)."}
+      - {name: attempted_at_utc, data_type: timestamp, description: "Attempt time, UTC."}
+      - {name: attempt_date, data_type: date, description: "UTC date."}
+      - {name: attempt_month, data_type: date, description: "First day of the UTC month."}
+      - {name: country_code, data_type: varchar, description: "ISO 3166 alpha-2."}
+      - {name: currency_code, data_type: varchar, description: "ISO 4217."}
+      - {name: is_usd_currency, data_type: boolean, description: "True for US and AE payments."}
+      - {name: state, data_type: varchar, description: "ACCEPTED or DECLINED."}
+      - {name: is_accepted, data_type: boolean}
+      - {name: is_declined, data_type: boolean}
+      - {name: cvv_provided, data_type: boolean, description: "Whether a CVC was sent (not whether it matched)."}
+      - {name: amount_local, data_type: "decimal(18,2)", description: "Major units, payment currency."}
+      - {name: fx_rate_to_usd, data_type: double, description: "Units of currency per 1 USD."}
+      - {name: amount_usd, data_type: "decimal(18,6)", data_tests: [not_null]}
+      - {name: accepted_amount_usd, data_type: "decimal(18,6)", description: "amount_usd if accepted, else 0."}
+      - {name: declined_amount_usd, data_type: "decimal(18,6)", description: "amount_usd if declined, else 0."}
+      - {name: is_chargeback, data_type: boolean, description: "Only meaningful where is_chargeback_data_reliable."}
+      - {name: is_chargeback_data_reliable, data_type: boolean, description: "attempt_date within the chargeback extract window."}
+      - {name: is_negative_amount, data_type: boolean, description: "Flags the one negative row (assumption A6)."}
+      - {name: dbt_loaded_at, data_type: timestamp, description: "Build time."}
+
+  - name: acceptance_daily
+    description: >
+      One row per attempt_date x country_code x currency_code (grain tested in
+      tests/assert_acceptance_daily_grain.sql). Counts and amounts only: compute rates in BI as
+      sum(accepted_attempts) / sum(total_attempts) at the level shown.
+    config:
+      contract: {enforced: true}
+    columns:
+      - {name: attempt_date, data_type: date, data_tests: [not_null]}
+      - {name: country_code, data_type: varchar, data_tests: [not_null]}
+      - {name: currency_code, data_type: varchar, data_tests: [not_null]}
+      - {name: total_attempts, data_type: bigint}
+      - {name: accepted_attempts, data_type: bigint}
+      - {name: declined_attempts, data_type: bigint}
+      - {name: total_amount_usd, data_type: "decimal(18,2)"}
+      - {name: accepted_amount_usd, data_type: "decimal(18,2)"}
+      - {name: declined_amount_usd, data_type: "decimal(18,2)"}
+      - {name: chargebacks, data_type: bigint}
+      - {name: cvv_provided_attempts, data_type: bigint}

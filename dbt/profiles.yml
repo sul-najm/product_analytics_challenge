@@ -1,0 +1,6 @@
+globepay:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: globepay.duckdb

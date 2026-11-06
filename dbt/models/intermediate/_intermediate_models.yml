@@ -1,0 +1,23 @@
+models:
+  - name: int_payments_enriched
+    description: >
+      One row per payment (same rows as stg_payments). Adds each payment's FX rate and USD
+      amount, its chargeback status, and data-quality flags.
+    columns:
+      - name: payment_id
+        data_tests: [not_null, unique]
+      - name: fx_rate_to_usd
+        description: Units of the payment currency per 1 USD, from the payment's own rates JSON.
+        data_tests: [not_null]   # a currency missing from rates would drop out of USD totals
+      - name: amount_usd
+        description: amount_local / fx_rate_to_usd.
+        data_tests: [not_null]
+      - name: has_chargeback_record
+        description: False means the payment has no row in the chargeback report.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [true]
+                quote: false
+      - name: is_chargeback_data_reliable
+        description: True when attempt_date <= 2019-01-20, the end of the chargeback report. After that, is_chargeback is unknown (assumption A4).

@@ -1,0 +1,72 @@
+models:
+  - name: stg_payments
+    description: Cleaned acceptance report, one row per payment attempt (1:1 with source).
+    columns:
+      - name: payment_id
+        description: trim(external_ref). Join key to chargebacks and FX rates.
+        data_tests: [not_null, unique]
+      - name: provider_ref
+        description: Globepay's own reference (ref). The spec example puts this value under external_ref (spec issue S4).
+      - name: attempted_at_utc
+        description: Payment timestamp, naive UTC (assumption A2c).
+        data_tests: [not_null]
+      - name: attempt_date
+        description: UTC calendar date of the attempt.
+      - name: state
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['ACCEPTED', 'DECLINED']
+      - name: is_accepted
+        data_tests: [not_null]
+      - name: amount_local
+        description: Amount in the payment currency, major units (assumption A1).
+        data_tests: [not_null]
+      - name: currency_code
+        description: ISO 4217 code.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['USD', 'EUR', 'GBP', 'CAD', 'MXN']
+      - name: country_code
+        description: ISO 3166 alpha-2 (UK as supplied, not GB).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['US', 'AE', 'FR', 'UK', 'CA', 'MX']
+
+  - name: stg_chargebacks
+    description: Cleaned chargeback report, one row per payment (1:1 with source).
+    columns:
+      - name: payment_id
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('stg_payments')
+                field: payment_id
+      - name: is_chargeback
+        data_tests: [not_null]
+
+  - name: stg_fx_rates
+    description: >
+      rates JSON unpacked, one row per payment per currency (grain tested in
+      tests/assert_fx_rates_grain.sql). Per-payment grain because rates differ by country
+      on the same day (assumption A2a).
+    columns:
+      - name: payment_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_payments')
+                field: payment_id
+      - name: currency_code
+        data_tests: [not_null]
+      - name: units_per_usd
+        description: Units of currency_code per 1 USD (assumption A2).
+        data_tests: [not_null]
