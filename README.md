@@ -13,14 +13,16 @@ Code and data behind the analysis of Globepay card payments (5,430 payments, Jan
 | `data/raw/` | The two provided CSVs |
 
 ## How to run
-Requires Python 3.9-3.13 (the range dbt 1.10 supports).
+Requires Python 3.9-3.13 (the range dbt 1.10 supports). From the `product_analytics_challenge` folder:
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate             # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-jupyter lab notebook/analysis.ipynb   # Run All
+
 python sql/run_queries.py             # prints the 3 query results
-cd dbt && dbt build                   # run from inside dbt/; expect 59 pass, 1 known warning
+cd dbt && dbt build && cd ..          # dbt must run from inside dbt/; expect 59 pass, 1 known warning
+jupyter lab notebook/analysis.ipynb   # opens in the browser; Run All. Ctrl+C in the terminal to stop
 ```
 
 ## Key assumptions
@@ -37,5 +39,6 @@ Referenced by ID in code comments.
 | A4 | Chargeback data only covers payments up to 20 Jan 2019, so it isn't used for trends |
 | A5 | Chargeback rate is measured on accepted payments only |
 | A6 | The one negative amount (-£23.78) is kept and flagged, not removed |
+| A7 | The PDF API spec provided is the same as the `globepay_api.html` named in the brief |
 | A8 | `country` is the card's issuing country, as the spec defines it |
 | A9 | `status` and `source` are dropped because they're constant; warn-level dbt tests flag any new value |
